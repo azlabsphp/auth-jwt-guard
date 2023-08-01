@@ -1,0 +1,37 @@
+{
+    "name": "drewlabs/auth-jwt-guard",
+    "description": "JWT Auth Guard composer for drewlabs/auth library",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "auth",
+        "jwt"
+    ],
+    "autoload": {
+        "psr-4": {
+            "Drewlabs\\Auth\\JwtGuard\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "azandrew-sidoine",
+            "email": "azandrewdevelopper@gmail.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "require": {
+        "drewlabs/auth-jwt": "^0.2.0",
+        "illuminate/console": "^8.0|^9.0|^10.0",
+        "phpseclib/phpseclib": "^3.0"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    },
+    "require-dev": {
+        "illuminate/auth": "^10.17",
+        "illuminate/http": "^10.17",
+        "phpunit/phpunit": ">=6.0"
+    }
+}
