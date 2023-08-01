@@ -12,6 +12,11 @@
             "Drewlabs\\Auth\\JwtGuard\\": "src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Drewlabs\\Auth\\JwtGuard\\Tests\\": "tests/"
+        }
+    },
     "authors": [
         {
             "name": "azandrew-sidoine",

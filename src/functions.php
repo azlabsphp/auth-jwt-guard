@@ -91,7 +91,7 @@ function useAccessTokenRepository($connection)
          *
          * @return AccessTokenEntity|null
          */
-        public function get($id)
+        public function findById($id)
         {
             // Return the token matching provided jit
             $value = $this->connection->table('oauth_tokens')->where('jti', $id)->first([
