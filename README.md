@@ -1,2 +1,2 @@
 # oauth-laravel
-Laravel / Lumen bindings for `drewlabs/oauth` library
+Laravel / Lumen guard implementation based on `drewlabs/auth-jwt` library
