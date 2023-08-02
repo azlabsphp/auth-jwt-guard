@@ -23,17 +23,27 @@ use Drewlabs\Auth\JwtGuard\JwtAuthGlobals;
 /**
  * Resolve an instance of {@see AccessTokenRepository} class.
  *
- * @param Illuminate\Database\ConnectionInterface|mixed $connection
+ * @param \Illuminate\Database\ConnectionInterface|mixed $connection
  *
  * @return AccessTokenRepository
  */
 function useAccessTokenRepository($connection)
 {
-    $object = new class() implements AccessTokenRepository {
+    return new class($connection) implements AccessTokenRepository {
         /**
          * @var mixed
          */
         private $connection;
+
+        /**
+         * Creates class instance
+         * 
+         * @param \Illuminate\Database\ConnectionInterface $connection 
+         */
+        public function __construct($connection)
+        {
+            $this->setConnection($connection);
+        }
 
         /**
          * @param mixed $connection
@@ -108,12 +118,12 @@ function useAccessTokenRepository($connection)
             }
             $value = (object) $value;
             $accessToken = new AccessToken([
-                ClaimTypes::SCOPES => json_decode($value->scopes, true),
+                ClaimTypes::SCOPES => null !== $value->scopes ? json_decode($value->scopes, true) : [],
                 ClaimTypes::SUBJECT => $value->sub,
                 ClaimTypes::JIT => $value->jti,
-                ClaimTypes::EXPIRATION => new \DateTimeImmutable($value->expires_at),
-                ClaimTypes::ISSUE_AT => new \DateTimeImmutable($value->issued_at),
-                ClaimTypes::ISSUER => $value->issuer,
+                ClaimTypes::EXPIRATION => null !== $value->expires_at ? new \DateTimeImmutable($value->expires_at) : null,
+                ClaimTypes::ISSUE_AT => null !== $value->issued_at ? new \DateTimeImmutable($value->issued_at) : null,
+                ClaimTypes::ISSUER => $value->issuer
             ]);
 
             if ((bool) $value->revoked) {
@@ -126,6 +136,4 @@ function useAccessTokenRepository($connection)
             return $accessToken;
         }
     };
-
-    return $object->setConnection($connection);
 }

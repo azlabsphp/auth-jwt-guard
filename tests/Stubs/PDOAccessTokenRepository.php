@@ -111,12 +111,12 @@ class PDOAccessTokenRepository implements AccessTokenRepository
         }
         $value = (object) $value;
         $accessToken = new AccessToken([
-            ClaimTypes::SCOPES => json_decode($value->scopes, true),
+            ClaimTypes::SCOPES => null !== $value->scopes ? json_decode($value->scopes, true) : [],
             ClaimTypes::SUBJECT => $value->sub,
             ClaimTypes::JIT => $value->jti,
-            ClaimTypes::EXPIRATION => new \DateTimeImmutable($value->expires_at),
-            ClaimTypes::ISSUE_AT => new \DateTimeImmutable($value->issued_at),
-            ClaimTypes::ISSUER => $value->issuer,
+            ClaimTypes::EXPIRATION => null !== $value->expires_at ? new \DateTimeImmutable($value->expires_at) : null,
+            ClaimTypes::ISSUE_AT => null !== $value->issued_at ? new \DateTimeImmutable($value->issued_at) : null,
+            ClaimTypes::ISSUER => $value->issuer
         ]);
 
         if ((bool) $value->revoked) {
