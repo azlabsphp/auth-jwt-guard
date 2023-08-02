@@ -2,24 +2,30 @@
 
 declare(strict_types=1);
 
-use Drewlabs\Auth\Jwt\Factory;
+/*
+ * This file is part of the drewlabs namespace.
+ *
+ * (c) Sidoine Azandrew <azandrewdevelopper@gmail.com>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+use Drewlabs\Auth\Jwt\AccessToken;
+use Drewlabs\Auth\Jwt\Contracts\TokenManagerInterface;
 use Drewlabs\Auth\Jwt\Payload\ClaimTypes;
 use Drewlabs\Auth\JwtGuard\Middleware\EnsureRequestsAreStateful;
 use Drewlabs\Auth\JwtGuard\Middleware\VerifyCsrfToken;
+use Drewlabs\Auth\JwtGuard\Tests\Stubs\Pipeline as StubsPipeline;
 use Drewlabs\Core\Helpers\Str;
 use Illuminate\Contracts\Encryption\Encrypter;
-use Illuminate\Contracts\Pipeline\Pipeline;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 class EnsureRequestsAreStatefulTest extends TestCase
 {
-    /**
-     * @var TokenManagerInterface
-     */
-    private $tokenManager;
-
     public function test_constructor()
     {
         $this->assertInstanceOf(EnsureRequestsAreStateful::class, $this->createMiddleware());
@@ -27,90 +33,75 @@ class EnsureRequestsAreStatefulTest extends TestCase
 
     public function test_ensure_stateless_request_invoke()
     {
-        $middleware = $this->createMiddleware();
-        $accessToken = $this->tokenManager->createToken([
-            ClaimTypes::SUBJECT => 1,
-        ]);
+        $csrfToken = Str::md5();
+        $middleware = $this->createMiddleware($csrfToken);
         $request = new Request();
         $request->setMethod('POST');
-        $request->headers->set('authorization', "Bearer $accessToken->plainTextToken");
-        $response = $middleware->__invoke($request, function () {
+        $request->headers->set('X-CSRF-TOKEN', $csrfToken);
+        $request->headers->set('authorization', "Bearer $csrfToken");
+        $this->assertInstanceOf(Response::class, $middleware->__invoke($request, static function () {
             return new Response();
-        });
-        $this->assertInstanceOf(Response::class, $response);
+        }));
     }
 
     public function test_ensure_stateful_request_invoke()
     {
-        $middleware = $this->createMiddleware();
-        $accessToken = $this->tokenManager->createToken([
-            ClaimTypes::SUBJECT => 1,
-        ]);
+        $csrfToken = Str::md5();
+        $middleware = $this->createMiddleware($csrfToken);
         $request = new Request();
         $request->setMethod('POST');
-        $request->headers->set('authorization', "Bearer $accessToken->plainTextToken");
+        $request->headers->set('X-CSRF-TOKEN', $csrfToken);
+        $request->headers->set('authorization', "Bearer $csrfToken");
         $request->headers->set('referer', 'https://safepay.ayael-entreprise.com');
         $this->assertInstanceOf(Response::class, $middleware->__invoke($request, static function () {
             return new Response();
         }));
     }
 
-    private function createTokenManager()
+    private function createMiddleware(string $csrfToken = null)
     {
-        if (null !== $this->tokenManager) {
-            return $this->tokenManager;
-        }
-        $config = [
-
-            'storage' => [
-                'revokeTokens' => 'array',
-            ],
-
-            'accessToken' => [
-                'refreshTTL' => 10000,
-                'tokenTTL' => 360,
-            ],
-
-            'issuer' => 'DREWLABS SERVICES',
-
-            'use_ssl' => true,
-
-            'encryption' => [
-                'default' => [
-                    'key' => Str::base62encode(Str::md5())
-                ],
-            ],
-        ];
-
-        return $this->tokenManager = (new Factory)->create($config);
-    }
-
-    private function createCSRFMiddleware(bool $testing = true)
-    {
+        /**
+         * @var Encrypter&MockObject
+         */
         $encrypter = $this->createMock(Encrypter::class);
-        return new VerifyCsrfToken(
-            $encrypter,
-            $this->createTokenManager(),
-            [
-                'path' => '/',
-                'domain' => 'http://127.0.0.1',
-                'secure' => true,
-                'http_only' => true,
-                'lifetime' => 1440,
-                'same_site' => 'Lax',
-            ],
-            static function () use ($testing) {
-                return $testing;
-            }
-        );
-    }
 
-    private function createMiddleware()
-    {
-        $pipeline = $this->createMock(Pipeline::class);
-        return new EnsureRequestsAreStateful($pipeline, [
-            'encrypt_cookies' => \Illuminate\Cookie\Middleware\EncryptCookies::class,
-            'verify_csrf_token' => $this->createCSRFMiddleware(),
+        // Mock Encrypter decrypt method
+        $encrypter->method('decrypt')
+            ->willReturn($csrfToken);
+
+        /**
+         * @var TokenManagerInterface&MockObject
+         */
+        $tokenManager = $this->createMock(TokenManagerInterface::class);
+
+        $tokenManager->method('decodeToken')
+            ->willReturn(new AccessToken([
+                ClaimTypes::XCSRF => $csrfToken,
+            ]));
+
+        return new EnsureRequestsAreStateful(new StubsPipeline(), [
+            'encrypt_cookies' => static function ($request, $next) {
+                return $next($request);
+            },
+            'verify_csrf_token' => static function ($request, $next) use ($encrypter, $tokenManager) {
+                $middleware = new VerifyCsrfToken(
+                    $encrypter,
+                    $tokenManager,
+                    [
+                        'path' => '/',
+                        'domain' => 'http://127.0.0.1',
+                        'secure' => true,
+                        'http_only' => true,
+                        'lifetime' => 1440,
+                        'same_site' => 'Lax',
+                    ],
+                    static function () {
+                        return true;
+                    }
+                );
+
+                return $middleware->handle($request, $next);
+            },
             'stateful' => [
                 'safepay.ayael-entreprise.com',
             ],

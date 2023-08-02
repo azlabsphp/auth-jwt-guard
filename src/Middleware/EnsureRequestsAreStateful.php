@@ -15,7 +15,6 @@ namespace Drewlabs\Auth\JwtGuard\Middleware;
 
 use Drewlabs\Core\Helpers\Arr;
 use Drewlabs\Core\Helpers\Str;
-use Illuminate\Container\Container;
 use Illuminate\Contracts\Pipeline\Pipeline;
 use Psr\Http\Message\ServerRequestInterface;
 
@@ -51,21 +50,12 @@ final class EnsureRequestsAreStateful extends BaseMiddleware
     public function __invoke($request, $next)
     {
         $this->configureSecureCookieSessions();
-        $container = Container::getInstance();
 
         return $this->pipeline
             ->send($request)
             ->through(static::fromFrontend($request) ? [
-                static function ($request, $next) {
-                    if ($request instanceof ServerRequestInterface) {
-                        $body = \is_object($body_ = $request->getParsedBody()) ? get_object_vars($body_) : $body_;
-                        $request = $request->withParsedBody(array_merge([
-                            $body,
-                            ['drewlabs:jwt', true],
-                        ]));
-                    } else {
-                        $request->attributes->set('drewlabs:jwt', true);
-                    }
+                static function (\Illuminate\Http\Request $request, $next) {
+                    $request->attributes->set('drewlabs:jwt', true);
 
                     return $next($request);
                 },

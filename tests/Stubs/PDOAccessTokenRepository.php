@@ -1,6 +1,17 @@
 <?php
 
-namespace Drewlabs\Auth\JwtGuard\Tests;
+declare(strict_types=1);
+
+/*
+ * This file is part of the drewlabs namespace.
+ *
+ * (c) Sidoine Azandrew <azandrewdevelopper@gmail.com>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+namespace Drewlabs\Auth\JwtGuard\Tests\Stubs;
 
 use Drewlabs\Auth\Jwt\AccessToken;
 use Drewlabs\Auth\Jwt\Contracts\AccessTokenEntity;
@@ -17,16 +28,15 @@ class PDOAccessTokenRepository implements AccessTokenRepository
     private $pdo;
 
     /**
-     * Creates pdo access token repository class instance
-     * 
-     * @param PDOAdapter $pdo 
-     * @return void 
+     * Creates pdo access token repository class instance.
+     *
+     * @return void
      */
     public function __construct()
     {
-        $this->pdo = new PDOAdapter('sqlite:memory');
+        $this->pdo = new PDOAdapter('sqlite:'.__DIR__.'/../database.sqlite');
         $sql = '
-            CREATE TABLE IF NOT EXISTS password_resets (
+            CREATE TABLE IF NOT EXISTS oauth_tokens (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 scopes TEXT NOT NULL,
                 sub TEXT NULL,
@@ -40,7 +50,7 @@ class PDOAccessTokenRepository implements AccessTokenRepository
                 updated_at DATETIME NULL
             )
         ';
-        
+
         // Create database at initialization
         $this->pdo->rawSql($sql);
     }

@@ -2,12 +2,22 @@
 
 declare(strict_types=1);
 
-use Drewlabs\Auth\Jwt\Factory;
-use Drewlabs\Auth\Jwt\Payload\ClaimTypes;
-use Drewlabs\Auth\Jwt\Providers\JWT;
+/*
+ * This file is part of the drewlabs namespace.
+ *
+ * (c) Sidoine Azandrew <azandrewdevelopper@gmail.com>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+use Drewlabs\Auth\Jwt\Contracts\TokenProvider;
 use Drewlabs\Auth\JwtGuard\Guard;
 use Drewlabs\Core\Helpers\Str;
+use Illuminate\Contracts\Auth\Factory as AuthFactory;
+use Illuminate\Contracts\Auth\Guard as AuthGuard;
 use Illuminate\Http\Request;
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 class GuardTest extends TestCase
@@ -19,89 +29,133 @@ class GuardTest extends TestCase
 
     public function test_constructor()
     {
-        $this->assertInstanceOf(Guard::class, $this->createGuardInstance());
-        $this->assertIsCallable($this->createGuardInstance());
+        $tokenProvider = $this->createMock(TokenProvider::class);
+        $guard = new Guard($tokenProvider);
+        $this->assertInstanceOf(Guard::class, $guard);
+        $this->assertIsCallable($guard);
     }
 
-    public function test_invoke_returns_null()
+    public function test_guard_invoke_returns_null_if_token_was_not_provided_in_the_request()
     {
-        $guard = $this->createGuardInstance();
         /**
-         * @var NewAccessToken
+         * @var TokenProvider&MockObject
          */
-        $accessToken = $this->tokenManager->createToken([
-            ClaimTypes::SUBJECT => 10,
-            ClaimTypes::SCOPES => ['*'],
-        ]);
+        $tokenProvider = $this->createMock(TokenProvider::class);
+        $guard = new Guard($tokenProvider);
+
         $request = new Request();
-        $request->headers->set('authorization', "Bearer $accessToken->plainTextToken");
         $user = $guard->__invoke($request);
         $this->assertNull($user);
     }
 
-    public function test_invoke_returns_user()
+    public function test_guard_invoke_returns_return_value_of_token_provider_if_request_has_bearer_token()
     {
-        $guard = $this->createGuardInstance();
+        // Initialize
         /**
-         * @var NewAccessToken
+         * @var TokenProvider&MockObject
          */
-        $accessToken = $this->tokenManager->createToken([
-            ClaimTypes::SUBJECT => 1,
-            ClaimTypes::SCOPES => ['*'],
-        ]);
-        $request = new Request();
-        $request->headers->set('authorization', "Bearer $accessToken->plainTextToken");
-        $user = $guard->__invoke($request);
-        $this->assertInstanceOf(HasApiTokens::class, $user);
-    }
+        $tokenProvider = $this->createMock(TokenProvider::class);
+        $user = new stdClass();
+        $tokenProvider->method('findByBearerToken')
+            ->willReturn($user);
 
-    public function test_returns_null_for_invalid_token_payload()
-    {
-        $jwt = new JWT('HS256', 'secret');
-        $plainTextToken = $jwt->encode([
-            'name' => 'Azandrew',
-            'address' => 'HN 238, LOME',
-        ]);
-        $guard = new Guard();
+        $guard = new Guard($tokenProvider);
+        $plainTextToken = Str::md5();
+
+        // Act
         $request = new Request();
         $request->headers->set('authorization', "Bearer $plainTextToken");
-        $user = $guard->__invoke($request);
-        $this->assertNull($user);
+        $result = $guard->__invoke($request);
+
+        // Assert
+        $this->assertSame($user, $result);
     }
 
-
-    private function createTokenManager()
+    public function test_guard_invoke_calls_token_provider_once_with_authorization_token()
     {
-        if (null !== $this->tokenManager) {
-            return $this->tokenManager;
-        }
-        $config = [
+        // Initialize
+        $plainTextToken = Str::md5();
+        /**
+         * @var TokenProvider&MockObject
+         */
+        $tokenProvider = $this->createMock(TokenProvider::class);
 
-            'storage' => [
-                'revokeTokens' => 'array',
-            ],
+        // Assert
+        $tokenProvider->expects($this->once())
+            ->method('findByBearerToken')
+            ->with($plainTextToken)
+            ->willReturn(new \stdClass());
 
-            'accessToken' => [
-                'refreshTTL' => 10000,
-                'tokenTTL' => 360,
-            ],
+        $guard = new Guard($tokenProvider);
 
-            'issuer' => 'DREWLABS SERVICES',
-
-            'use_ssl' => true,
-
-            'encryption' => [
-                'default' => [
-                    'key' => Str::base62encode(Str::md5())
-                ],
-            ],
-        ];
-
-        return $this->tokenManager = (new Factory)->create($config);
+        // Act
+        $request = new Request();
+        $request->headers->set('authorization', "Bearer $plainTextToken");
+        $guard->__invoke($request);
     }
 
-    private function createGuardInstance()
+    public function test_guard_invoke_call_factory_guard_and_guards_user_method_if_auth_factory_is_provided_as_parameter_to_constructor()
     {
-        return new Guard();
+        // Initialize
+        /**
+         * @var TokenProvider&MockObject
+         */
+        $tokenProvider = $this->createMock(TokenProvider::class);
+        /**
+         * @var AuthFactory&MockObject
+         */
+        $authFactory = $this->createMock(AuthFactory::class);
+
+        /**
+         * @var AuthGuard&MockObject
+         */
+        $authGuard = $this->createMock(AuthGuard::class);
+
+        // Assert
+        $authGuard->expects($this->once())
+            ->method('user')
+            ->willReturn(null);
+
+        $authFactory->expects($this->once())
+            ->method('guard')
+            ->with('web')
+            ->willReturn($authGuard);
+
+        $guard = new Guard($tokenProvider, $authFactory);
+
+        // Act
+        $guard->__invoke(new Request());
+    }
+
+    public function test_guard_invoke_call_guard_multiple_times_with_provided_guards_passed_as_parameter()
+    {
+
+        // Initialize
+        /**
+         * @var TokenProvider&MockObject
+         */
+        $tokenProvider = $this->createMock(TokenProvider::class);
+        /**
+         * @var AuthFactory&MockObject
+         */
+        $authFactory = $this->createMock(AuthFactory::class);
+
+        /**
+         * @var AuthGuard&MockObject
+         */
+        $authGuard = $this->createMock(AuthGuard::class);
+
+        // Assert
+        $authGuard->method('user')
+            ->willReturn(null);
+
+        $authFactory->expects($this->exactly(2))
+            ->method('guard')
+            ->willReturn($authGuard);
+
+        $guard = new Guard($tokenProvider, $authFactory, ['http', 'api']);
+
+        // Act
+        $guard->__invoke(new Request());
     }
 }

@@ -11,7 +11,7 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace Drewlabs\Auth\JwtGuard\Tests;
+namespace Drewlabs\Auth\JwtGuard\Tests\Stubs;
 
 use PDO;
 

@@ -13,8 +13,6 @@ declare(strict_types=1);
 
 namespace Drewlabs\Auth\JwtGuard\Exceptions;
 
-use Exception;
-
 class AuthenticationException extends \Exception
 {
     /**

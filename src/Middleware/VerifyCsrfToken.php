@@ -17,11 +17,12 @@ use Drewlabs\Auth\Jwt\Contracts\CsrfTokenAware;
 use Drewlabs\Auth\Jwt\Contracts\TokenManagerInterface;
 use Drewlabs\Auth\JwtGuard\BearerToken;
 use Drewlabs\Auth\JwtGuard\Exceptions\CsrfTokenMismatchException;
+use Drewlabs\Cookies\Cookie;
+use Drewlabs\Cookies\FactoryProxy as CookieFactory;
 use Drewlabs\Core\Helpers\ImmutableDateTime;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Contracts\Encryption\Encrypter;
 use Psr\Http\Message\ResponseInterface;
-use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Response;
 
 final class VerifyCsrfToken extends BaseMiddleware
@@ -32,11 +33,6 @@ final class VerifyCsrfToken extends BaseMiddleware
      * @var Encrypter
      */
     private $encrypter;
-
-    /**
-     * @var \Closure
-     */
-    private $isTestingCallback;
 
     /**
      * @var array
@@ -54,15 +50,11 @@ final class VerifyCsrfToken extends BaseMiddleware
     public function __construct(
         Encrypter $encrypter,
         TokenManagerInterface $tokens,
-        array $config,
-        \Closure $isTestingCallback = null
+        array $config = []
     ) {
         $this->tokens = $tokens;
-        $this->config = $config;
+        $this->config = $config ?? [];
         $this->encrypter = $encrypter;
-        $this->isTestingCallback = $isTestingCallback ?? static function () {
-            return false;
-        };
     }
 
     /**
@@ -82,9 +74,9 @@ final class VerifyCsrfToken extends BaseMiddleware
         // Query csrf token from request
         $accessToken = $this->tokens->decodeToken((string) BearerToken::fromRequest($request));
         $csrfToken = $accessToken instanceof CsrfTokenAware ? $accessToken->csrfToken() : $request->session()->token();
+
         if (
             $this->isReading($request)
-            || $this->isTestingCallback->__invoke()
             || $this->inExceptArray($request, $expect)
             || $this->tokensMatch($request, $csrfToken)
         ) {
@@ -176,22 +168,21 @@ final class VerifyCsrfToken extends BaseMiddleware
         return $token;
     }
 
-    private function addCookieToResponse($response, string $csrfToken)
+    private function addCookieToResponse(Response $response, string $csrfToken)
     {
-        $response->headers->setCookie(
-            new Cookie(
-                'XSRF-TOKEN',
-                $csrfToken,
-                ImmutableDateTime::nowTz()->getTimestamp() + 60 * $this->config['lifetime'] ?? 3600,
-                $this->config['path'] ?? '/',
-                $this->config['domain'] ?? 'http://localhost',
-                $this->config['secure'] ?? true,
-                $this->config['http_only'] ?? false, // Whether it's Http only
-                false,
-                $this->config['same_site'] ?? null
-            )
+        $cookie = CookieFactory::create(
+            'XSRF-TOKEN',
+            $csrfToken,
+            ImmutableDateTime::nowTz()->getTimestamp() + 60 * $this->config['lifetime'] ?? 3600,
+            $this->config['domain'] ?? null,
+            $this->config['path'] ?? '/',
+            $this->config['secure'] ?? true,
+            $this->config['http_only'] ?? false,
+            $this->config['same_site'] ?? Cookie::SAME_SITE_LAX
         );
+        $response->headers->set('Set-Cookie', (string) $cookie);
 
+        // Return transformed response
         return $response;
     }
 }

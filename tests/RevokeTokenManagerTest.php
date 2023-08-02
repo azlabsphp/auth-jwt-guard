@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /*
- * This file is part of the Drewlabs package.
+ * This file is part of the drewlabs namespace.
  *
  * (c) Sidoine Azandrew <azandrewdevelopper@gmail.com>
  *
@@ -12,16 +12,16 @@ declare(strict_types=1);
  */
 
 use Drewlabs\Auth\Jwt\AccessToken;
+use Drewlabs\Auth\Jwt\Contracts\RevokeTokenManager;
 use Drewlabs\Auth\Jwt\Payload\Claims;
 use Drewlabs\Auth\Jwt\RevokedTokens;
 use Drewlabs\Auth\Jwt\RevokedTokenStorage;
 use Drewlabs\Auth\Jwt\RevokedTokenStorageAdapters;
-use Drewlabs\Auth\JwtGuard\Tests\PDOAccessTokenRepository;
+use Drewlabs\Auth\JwtGuard\Tests\Stubs\PDOAccessTokenRepository;
 use PHPUnit\Framework\TestCase;
 
 class RevokeTokenManagerTest extends TestCase
 {
-
     protected function setUp(): void
     {
         $this->addDatabaseAdapter();
@@ -55,7 +55,7 @@ class RevokeTokenManagerTest extends TestCase
 
     private function addDatabaseAdapter()
     {
-        RevokedTokenStorageAdapters::getInstance()->addAdapter('database', new RevokedTokenStorage(new PDOAccessTokenRepository));
+        RevokedTokenStorageAdapters::getInstance()->addAdapter('database', new RevokedTokenStorage(new PDOAccessTokenRepository()));
         // Setting database adapter as default adapter
         RevokedTokenStorageAdapters::getInstance()->default('database');
     }

@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Drewlabs\Auth\JwtGuard;
 
 use Drewlabs\Auth\Jwt\Contracts\TokenProvider;
+use Drewlabs\Auth\Jwt\Exceptions\MissingTokenException;
 use Drewlabs\Auth\Jwt\TransientToken;
 use Drewlabs\Contracts\OAuth\HasApiTokens;
 use Drewlabs\Core\Helpers\Arr;
@@ -37,14 +38,14 @@ class Guard
     /**
      * @var string
      */
-    private $defaultGuard = 'web';
+    private $defaultGuard = ['web'];
 
     /**
      * Create guard class instance.
      *
      * @param string $default
      */
-    public function __construct(TokenProvider $provider, AuthFactory $auth = null, $default = 'web')
+    public function __construct(TokenProvider $provider, AuthFactory $auth = null, $default = ['web'])
     {
         $this->auth = $auth;
         $this->defaultGuard = $default;
@@ -63,8 +64,13 @@ class Guard
         if ($tokenable = $this->forDefaultGuards()) {
             return $tokenable;
         }
-        if ($bearerToken = BearerToken::fromRequest($request)) {
+        try {
+            $bearerToken = BearerToken::fromRequest($request);
+
             return $this->provider->findByBearerToken((string) $bearerToken);
+        } catch (MissingTokenException $e) {
+            // Case a missing token exception is thrown we return null
+            return null;
         }
     }
 
@@ -73,15 +79,24 @@ class Guard
         if (null !== $this->auth) {
             try {
                 foreach (Arr::wrap($this->defaultGuard) as $guard) {
-                    /*
-                     * @var HasApiTokens
-                     */
-                    if ($user = $this->auth->guard($guard)->user()) {
+                    if ($authGuard = $this->auth->guard($guard)) {
+                        /**
+                         * @var HasApiTokens
+                         */
+                        $user = $authGuard->user();
+                        // Case the return user instance is null, we continue to the next guard
+                        // in the iteration
+                        if (null === $user) {
+                            continue;
+                        }
+
                         return $this->supportsTokens($user) ? $user->withAccessToken(new TransientToken()) : $user;
                     }
                 }
+                // returns null if no guard could authenticate user
+                return null;
             } catch (\Throwable $e) {
-                return;
+                return null;
             }
         }
     }
