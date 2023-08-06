@@ -38,6 +38,7 @@
     "require-dev": {
         "illuminate/auth": "^10.17",
         "illuminate/http": "^10.17",
-        "phpunit/phpunit": ">=6.0"
+        "phpunit/phpunit": ">=6.0",
+        "vlucas/phpdotenv": "^5.5"
     }
 }

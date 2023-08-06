@@ -25,6 +25,7 @@ use function Drewlabs\Auth\JwtGuard\Functions\useAccessTokenRepository;
 
 use Drewlabs\Auth\JwtGuard\Middleware\EnsureRequestsAreStateful;
 use Drewlabs\Auth\JwtGuard\Middleware\VerifyCsrfToken;
+use Drewlabs\Auth\JwtGuard\Testing\Pipeline as TestingPipeline;
 use Drewlabs\Contracts\Auth\AuthenticatableProvider;
 use Drewlabs\Contracts\OAuth\PersonalAccessTokenFactory as AccessTokenFactory;
 use Drewlabs\Core\Helpers\Arr;
@@ -34,7 +35,6 @@ use Illuminate\Contracts\Auth\UserProvider;
 use Illuminate\Contracts\Encryption\Encrypter;
 use Illuminate\Contracts\Http\Kernel;
 
-use Illuminate\Contracts\Pipeline\Pipeline;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -52,12 +52,12 @@ class ServiceProvider extends ServiceProviderBase
     public function boot()
     {
         $this->publishes([
-            __DIR__.'/database/migrations' => $this->app->basePath('database/migrations'),
+            __DIR__ . '/database/migrations' => $this->app->basePath('database/migrations'),
         ], 'drewlabs-jwt-migrations');
 
         // Publish configuration files
         $this->publishes([
-            __DIR__.'/config' => $this->app->basePath('config'),
+            __DIR__ . '/config' => $this->app->basePath('config'),
         ], 'drewlabs-jwt-configs');
 
         if ($this->app->runningInConsole()) {
@@ -75,7 +75,7 @@ class ServiceProvider extends ServiceProviderBase
      */
     public function register()
     {
-        $this->mergeConfigFrom(__DIR__.'/config/jwt.php', 'jwt');
+        $this->mergeConfigFrom(__DIR__ . '/config/jwt.php', 'jwt');
 
         // Provide for auth-jwt library
         $this->provideAuthJwt();
@@ -129,8 +129,8 @@ class ServiceProvider extends ServiceProviderBase
 
         $this->app->bind(BearerTokenProvider::class, static function ($app) {
             $config = $app['config'];
-            $driver = $config->get('auth.guards.'.JwtAuthGlobals::guard().'.driver');
-            $provider = $config->get('auth.providers.'.$driver.'.provider');
+            $driver = $config->get('auth.guards.' . JwtAuthGlobals::guard() . '.driver');
+            $provider = $config->get('auth.providers.' . $driver . '.provider');
             /**
              * @var UserProvider
              */
@@ -157,10 +157,8 @@ class ServiceProvider extends ServiceProviderBase
 
         $this->app->bind(EnsureRequestsAreStateful::class, function ($app) {
             $config = $this->app['config']['jwt']['middleware'] ?? [];
-            /**
-             * @var Pipeline
-             */
-            $pipeline = $this->isLumen() ? new \Laravel\Lumen\Routing\Pipeline($app) : new \Illuminate\Routing\Pipeline($app);
+
+            $pipeline = $this->app->runningUnitTests() ? new TestingPipeline : ($this->isLumen() ? new \Laravel\Lumen\Routing\Pipeline($app) : new \Illuminate\Routing\Pipeline($app));
 
             return new EnsureRequestsAreStateful($pipeline, [
                 'encrypt_cookies' => $config['cookies']['encrypt'] ?? \Illuminate\Cookie\Middleware\EncryptCookies::class,

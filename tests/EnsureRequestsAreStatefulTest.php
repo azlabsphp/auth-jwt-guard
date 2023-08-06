@@ -16,7 +16,7 @@ use Drewlabs\Auth\Jwt\Contracts\TokenManagerInterface;
 use Drewlabs\Auth\Jwt\Payload\ClaimTypes;
 use Drewlabs\Auth\JwtGuard\Middleware\EnsureRequestsAreStateful;
 use Drewlabs\Auth\JwtGuard\Middleware\VerifyCsrfToken;
-use Drewlabs\Auth\JwtGuard\Tests\Stubs\Pipeline as StubsPipeline;
+use Drewlabs\Auth\JwtGuard\Testing\Pipeline;
 use Drewlabs\Core\Helpers\Str;
 use Illuminate\Contracts\Encryption\Encrypter;
 use Illuminate\Http\Request;
@@ -79,7 +79,7 @@ class EnsureRequestsAreStatefulTest extends TestCase
                 ClaimTypes::XCSRF => $csrfToken,
             ]));
 
-        return new EnsureRequestsAreStateful(new StubsPipeline(), [
+        return new EnsureRequestsAreStateful(new Pipeline(), [
             'encrypt_cookies' => static function ($request, $next) {
                 return $next($request);
             },
