@@ -40,5 +40,12 @@
         "illuminate/http": "^10.17",
         "phpunit/phpunit": ">=6.0",
         "vlucas/phpdotenv": ">=3.0"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Drewlabs\\Auth\\JwtGuard\\ServiceProvider"
+            ]
+        }
     }
 }
