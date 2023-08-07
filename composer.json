@@ -36,8 +36,8 @@
         "sort-packages": true
     },
     "require-dev": {
-        "illuminate/auth": "^10.17",
-        "illuminate/http": "^10.17",
+        "illuminate/auth": "^8.0|^9.0|^10.0",
+        "illuminate/http": "^8.0|^9.0|^10.0",
         "phpunit/phpunit": ">=6.0",
         "vlucas/phpdotenv": ">=3.0"
     },
