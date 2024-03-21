@@ -26,9 +26,10 @@
     "minimum-stability": "dev",
     "prefer-stable": true,
     "require": {
-        "drewlabs/auth-jwt": "^0.2.0",
+        "php": "^7.2|^8.0",
+        "drewlabs/auth-jwt": "^0.2.0|^0.3.0",
         "drewlabs/http-cookie": "^0.2.0",
-        "illuminate/console": "^8.0|^9.0|^10.0",
+        "illuminate/console": "^9.0|^10.0|^11.0",
         "phpseclib/phpseclib": "^3.0"
     },
     "config": {
@@ -36,8 +37,8 @@
         "sort-packages": true
     },
     "require-dev": {
-        "illuminate/auth": "^8.0|^9.0|^10.0",
-        "illuminate/http": "^8.0|^9.0|^10.0",
+        "illuminate/auth": "^9.0|^10.0|^11.0",
+        "illuminate/http": "^9.0|^10.0|^11.0",
         "phpunit/phpunit": ">=6.0",
         "vlucas/phpdotenv": ">=3.0"
     },
